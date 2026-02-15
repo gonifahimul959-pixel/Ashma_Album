@@ -32,7 +32,6 @@
             display: flex; align-items: center; justify-content: center;
         }
         
-        /* Spinner */
         .photo-item::before {
             content: ""; width: 20px; height: 20px; border: 2px solid #ccc;
             border-top-color: var(--dark); border-radius: 50%;
@@ -59,7 +58,6 @@
             letter-spacing: 1px; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .dl-btn:hover { background: white; transform: translateY(-2px); }
-
         .close-btn { color: #fff; margin-top: 20px; font-size: 14px; opacity: 0.6; cursor: pointer; text-decoration: underline; }
 
         /* --- CONTROLS --- */
@@ -74,8 +72,8 @@
 <body>
 
     <div id="lightbox">
-        <img id="zoom-img" alt="Zoomed view">
-        <a id="download-link" href="" download="" class="dl-btn">DOWNLOAD PHOTO</a>
+        <img id="zoom-img" alt="View">
+        <a id="download-link" href="" download class="dl-btn">DOWNLOAD PHOTO</a>
         <div class="close-btn" onclick="closeLightbox()">Close Gallery</div>
     </div>
 
@@ -87,7 +85,7 @@
         <div class="photo-grid" id="photo-grid"></div>
         <div class="controls">
             <button id="prevBtn" onclick="movePage(-1)">PREV</button>
-            <button onclick="location.reload()" style="background:#666;">HOME</button>
+            <button onclick="goHome()" style="background:#666;">HOME</button>
             <button id="nextBtn" onclick="movePage(1)">NEXT</button>
         </div>
         <div class="page-info" id="page-display"></div>
@@ -105,10 +103,16 @@
             displayPage();
         }
 
+        // Fixed Home Button: No reload needed, just toggle visibility
+        function goHome() {
+            document.getElementById('album-container').style.display = 'none';
+            document.getElementById('cover-page').style.display = 'flex';
+            currentPage = 1;
+        }
+
         function displayPage() {
             const grid = document.getElementById('photo-grid');
             grid.innerHTML = ''; 
-            
             const startIdx = (currentPage - 1) * perPage;
             const endIdx = Math.min(startIdx + perPage, photoList.length);
 
@@ -121,11 +125,7 @@
                 img.src = fileName;
                 img.loading = "lazy"; 
                 img.onload = function() { this.style.opacity = "1"; };
-
-                // Clicking the grid item opens the lightbox
-                item.onclick = function() {
-                    openLightbox(fileName);
-                };
+                img.onclick = () => openLightbox(fileName);
 
                 item.appendChild(img);
                 grid.appendChild(item);
@@ -141,16 +141,9 @@
             const zoomImg = document.getElementById('zoom-img');
             const dlLink = document.getElementById('download-link');
 
-            // 1. Reset current image and link to avoid showing old data
-            zoomImg.src = "";
-            dlLink.href = "";
-
-            // 2. Set new values
             zoomImg.src = file;
             dlLink.href = file;
-            dlLink.setAttribute('download', 'Ashma_Photo_' + file);
-
-            // 3. Display lightbox
+            dlLink.setAttribute('download', 'Ashma_' + file);
             lb.style.display = 'flex';
         }
 
@@ -159,32 +152,15 @@
         }
 
         function movePage(step) {
-            const nextP = currentPage + step;
-            if (nextP >= 1 && nextP <= maxPages) {
-                currentPage = nextP;
-                displayPage();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            currentPage += step;
+            displayPage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Close lightbox if clicking outside the image or button
+        // Close on background click
         document.getElementById('lightbox').addEventListener('click', function(e) {
             if (e.target === this) closeLightbox();
         });
-    </script>
-</body>
-</html>
-        }
-
-        function movePage(step) {
-            currentPage += step;
-            displayPage();
-            window.scrollTo(0,0);
-        }
-    </script>
-</body>
-</html>
-        }
     </script>
 </body>
 </html>
