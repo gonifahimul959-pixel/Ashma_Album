@@ -6,7 +6,7 @@
     <title>Ashma's Album</title>
     <style>
         :root { --paper: #fdfaf5; --accent: #e0c9a6; --dark: #1a1a2e; }
-        body { font-family: 'Georgia', serif; background-color: #0f0f1a; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; color: white; }
+        body { font-family: 'Georgia', serif; background-color: #0f0f1a; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; color: white; overflow-x: hidden; }
         
         /* --- FRONT COVER --- */
         #cover-page {
@@ -21,7 +21,6 @@
             border: 1px solid var(--accent); color: white; padding: 15px 40px;
             font-size: 1.1rem; letter-spacing: 2px; cursor: pointer; border-radius: 40px; transition: 0.3s;
         }
-        #cover-page button:hover { background: var(--accent); color: var(--dark); }
 
         /* --- ALBUM GRID --- */
         #album-container { display: none; width: 100%; max-width: 500px; background: var(--paper); padding: 20px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
@@ -33,6 +32,7 @@
             display: flex; align-items: center; justify-content: center;
         }
         
+        /* Spinner */
         .photo-item::before {
             content: ""; width: 20px; height: 20px; border: 2px solid #ccc;
             border-top-color: var(--dark); border-radius: 50%;
@@ -41,30 +41,31 @@
 
         .photo-item img { 
             width: 100%; height: 100%; object-fit: cover; 
-            position: relative; z-index: 2; opacity: 0; transition: opacity 0.5s ease;
+            position: relative; z-index: 2; opacity: 0; transition: opacity 0.4s ease;
         }
 
-        /* --- LIGHTBOX & DOWNLOAD --- */
+        /* --- LIGHTBOX (ZOOM) --- */
         #lightbox { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column;
             justify-content: center; align-items: center; 
         }
-        #lightbox img { max-width: 90%; max-height: 80vh; border-radius: 5px; margin-bottom: 20px; }
+        #lightbox img { max-width: 90%; max-height: 75vh; border-radius: 5px; margin-bottom: 20px; object-fit: contain; }
         
         .dl-btn {
             background: var(--accent); color: var(--dark); border: none;
-            padding: 12px 25px; border-radius: 30px; font-weight: bold;
+            padding: 14px 30px; border-radius: 30px; font-weight: bold;
             text-decoration: none; cursor: pointer; font-family: sans-serif;
-            letter-spacing: 1px; transition: 0.3s;
+            letter-spacing: 1px; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .dl-btn:hover { transform: scale(1.05); background: white; }
-        .close-hint { color: #888; font-size: 12px; margin-top: 15px; }
+        .dl-btn:hover { background: white; transform: translateY(-2px); }
+
+        .close-btn { color: #fff; margin-top: 20px; font-size: 14px; opacity: 0.6; cursor: pointer; text-decoration: underline; }
 
         /* --- CONTROLS --- */
         .controls { display: flex; justify-content: space-between; gap: 10px; }
         .controls button { background: var(--dark); color: white; border: none; padding: 12px; flex: 1; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .controls button:disabled { opacity: 0.3; }
+        .controls button:disabled { opacity: 0.3; cursor: not-allowed; }
         .page-info { text-align: center; color: #333; font-size: 13px; margin-top: 15px; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -73,9 +74,9 @@
 <body>
 
     <div id="lightbox">
-        <img id="zoom-img" onclick="closeLightbox()">
-        <a id="download-link" href="#" download class="dl-btn">DOWNLOAD PHOTO</a>
-        <span class="close-hint" onclick="closeLightbox()">Tap image to close</span>
+        <img id="zoom-img" alt="Zoomed view">
+        <a id="download-link" href="" download="" class="dl-btn">DOWNLOAD PHOTO</a>
+        <div class="close-btn" onclick="closeLightbox()">Close Gallery</div>
     </div>
 
     <div id="cover-page">
@@ -107,26 +108,23 @@
         function displayPage() {
             const grid = document.getElementById('photo-grid');
             grid.innerHTML = ''; 
+            
             const startIdx = (currentPage - 1) * perPage;
             const endIdx = Math.min(startIdx + perPage, photoList.length);
 
             for (let i = startIdx; i < endIdx; i++) {
+                const fileName = photoList[i];
                 const item = document.createElement('div');
                 item.className = 'photo-item';
+                
                 const img = document.createElement('img');
-                img.src = photoList[i];
+                img.src = fileName;
                 img.loading = "lazy"; 
                 img.onload = function() { this.style.opacity = "1"; };
 
+                // Clicking the grid item opens the lightbox
                 item.onclick = function() {
-                    const zoomImg = document.getElementById('zoom-img');
-                    const dlLink = document.getElementById('download-link');
-                    
-                    zoomImg.src = photoList[i];
-                    dlLink.href = photoList[i]; // Sets the download path
-                    dlLink.setAttribute('download', `Ashma_Album_${photoList[i]}`); // Custom filename
-                    
-                    document.getElementById('lightbox').style.display = 'flex';
+                    openLightbox(fileName);
                 };
 
                 item.appendChild(img);
@@ -138,8 +136,44 @@
             document.getElementById('nextBtn').disabled = (currentPage === maxPages);
         }
 
+        function openLightbox(file) {
+            const lb = document.getElementById('lightbox');
+            const zoomImg = document.getElementById('zoom-img');
+            const dlLink = document.getElementById('download-link');
+
+            // 1. Reset current image and link to avoid showing old data
+            zoomImg.src = "";
+            dlLink.href = "";
+
+            // 2. Set new values
+            zoomImg.src = file;
+            dlLink.href = file;
+            dlLink.setAttribute('download', 'Ashma_Photo_' + file);
+
+            // 3. Display lightbox
+            lb.style.display = 'flex';
+        }
+
         function closeLightbox() {
             document.getElementById('lightbox').style.display = 'none';
+        }
+
+        function movePage(step) {
+            const nextP = currentPage + step;
+            if (nextP >= 1 && nextP <= maxPages) {
+                currentPage = nextP;
+                displayPage();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Close lightbox if clicking outside the image or button
+        document.getElementById('lightbox').addEventListener('click', function(e) {
+            if (e.target === this) closeLightbox();
+        });
+    </script>
+</body>
+</html>
         }
 
         function movePage(step) {
